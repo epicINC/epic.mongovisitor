@@ -66,7 +66,7 @@ const ArrayHandler = path => ({
 
 let p = EpicProxy([1,2,3], ArrayHandler());
 
-p[0] = 111;
+pp]
 
 console.log(p);
 
@@ -137,4 +137,4 @@ array:
 {name: '', object: {}, type: '', oldValue: '', index: 0, removed: '', addedCount: ''};
 ["add", "update", "delete", "splice"]
 // [{type: 'splice', object: <arr>, index: 1, removed: ['B', 'c', 'd'], addedCount: 3}]
-*/
+*/[
