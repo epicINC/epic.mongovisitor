@@ -1,0 +1,98 @@
+{
+  "name": "Message",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "id": true,
+      "required": true,
+      "index": true,
+      "description": "test"
+    },
+    "name": {
+      "type": "string",
+      "required": true,
+      "index": false
+    },
+    "creator": {
+      "type": "string",
+      "required": true,
+      "index": false
+    },
+    "type": {
+      "type": "number",
+      "required": true
+    },
+    "invite": {
+      "type": "number",
+      "required": true
+    },
+    "auth": {
+      "type": "number",
+      "required": true
+    },
+    "ignores": {
+      "type": ["string"],
+      "required": true
+    },
+    "intro": {
+      "type": "string",
+      "required": true
+    },
+    "notice": {
+      "type": "string",
+      "required": true
+    },
+    "managers": {
+      "type": ["string"],
+      "required": true
+    },
+    "members": {
+      "type": ["Member"],
+      "required": true
+    },
+    "tags": {
+      "type": ["string"],
+      "required": true
+    },
+    "ver": {
+      "type": "number",
+      "required": true
+    },
+    "ts": {
+      "type": "number",
+      "required": true
+    },
+    "as": {
+      "type": "number",
+      "required": true
+    }
+  },
+  "validations": [],
+  "relations": {},
+  "acls": [],
+  "methods": {
+    "greet": {
+      "isStatic": true,
+      "accepts": [
+        {
+          "arg": "msg",
+          "type": "string",
+          "http": {
+            "source": "query"
+          }
+        }
+      ],
+      "returns": {
+        "arg": "greeting",
+        "type": "string"
+      },
+      "http": {
+        "verb": "get"
+      }
+    }
+  }
+}
