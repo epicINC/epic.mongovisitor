@@ -11,7 +11,7 @@ let group = {
     "intro" : "",
     "notice" : "",
     "managers" : [ 
-        "1000+005056BF4D75-test2", 'a', 'b', 'c'
+        "1000+005056BF4D75-test2", 'a', 'b'
     ],
     "members" : {
         "1000+005056BF4D75-test2" : {
@@ -39,94 +39,178 @@ const ignoredProperties = {
 
 let schema = require('./modelLoader')
 
-const ArrayFunctions = new Set(['splice', 'push', 'pop', 'unshift', 'shift'])
 
-// https://github.com/anywhichway/proxy-observe/blob/master/index.js
-const ArrayHandler = path => ({
-		get (target, name, receiver) {
-			if (ArrayFunctions.has(name))
-				return function () {
-					return Reflect.apply(Array.prototype[name], target, arguments);
-				};
+class ObjectObserver {
 
+	//  acceptlist:
+	//  ["add", "update", "delete", "reconfigure", "setPrototype", "preventExtensions"]
+	constructor (callback, acceptlist) {
+		if (acceptlist !== undefined) {
+			let set = new Set(acceptlist);
+			this.isAccept = type => set.has(type);
+		}
+		else
+			this.isAccept = () => true;
 
-			return target[name];
-		},
-		set (target, name, value, receiver) {
-			console.log('set', arguments);
-			return true;
-		},
-		deleteProperty (target, name) {
-			console.log('del', arguments);
-			return true;
+		this.callback = callback;
+	}
+
+	set (target, property, value, receiver) {
+		let
+			type = target.hasOwnProperty(property) ? 'update' : 'add',
+			oldValue = target[property];
+
+		target[property] = value;
+
+		if (this.isAccept(type))
+			this.callback({name: property, object: target, type: type, oldValue: oldValue});
+
+		return true;
+	}
+
+	deleteProperty (target, property) {
+		let oldValue = target[property];
+		delete target[property];
+
+		if (this.isAccept('delete'))
+			this.callback({name: property, object: target, type: 'delete', oldValue: oldValue});
+
+		return true;		
+	}
+
+	defineProperty (target, property, descriptor) {
+		Object.defineProperty(target, property, descriptor);
+		if (this.isAccept('reconfigure'))
+			this.callback({name: property, object: target, type: 'reconfigure'});
+
+		return true;
+	}
+
+	setPrototypeOf (target, prototype) {
+		let oldvalue = Object.getPrototypeOf(target);
+		Object.setPrototypeOf(target, prototype);
+
+		if (this.isAccept('setPrototype'))
+			this.callback({name: '__proto__', object: target, type: 'setPrototype', oldValue: oldvalue});
+
+		return true;
+	}
+
+	preventExtensions (target) {
+		Object.preventExtensions(target);
+		if (this.isAccept('preventExtensions'))
+			this.callback({object: target, type: 'preventExtensions'});
+
+		return true;
+	}
+}
+
+class ArrayObserver extends ObjectObserver {
+
+	//  acceptlist:
+	//  ["add", "update", "delete", "splice"]
+	constructor (callback, acceptlist) {
+		super(callback, acceptlist);
+	}
+
+	get (target, property, receiver) {
+		if (property === 'splice') {
+			return this.splice(this, target);
+
+		}
+
+		if (property === "push") {
+			 return function (...item) {
+		    	this.splice(this.length, 0, ...item);
+		    	return item.length;
+		    }
+    }
+
+    if (property === "pop") {
+			 return function () {
+		    	return this.splice(this.length - 1, 1)[0];
+		    }
+    }
+
+    if(property === "unshift") {
+			 return function (...item) {
+	    		this.splice(0, 0, ...item);
+	    		return item.length;
+	    	}
+		}
+
+		if(property === "shift") {
+			return function () {
+	    		return this.splice(0, 1)[0];
+	    	}
+		}
+
+		return target[property];
+	}
+
+	splice (self, target) {
+		return function (start, deleteCount, ...items) {
+			let removed = deleteCount === undefined ? target.splice(start) : target.splice(start, deleteCount, ...items);
+			if (self.isAccept('splice'))
+				self.callback({object: target, type: 'splice', index: start, removed: removed, addedCount: items.length});
+			return removed;
 		}
 	}
-);
 
+	set (target, property, value, receiver) {
+		if (property === 'length') {
+			this.splice(this, target)(value);
+			return true;
+		}
 
-let p = EpicProxy([1,2,3], ArrayHandler());
-
-pp]
-
-console.log(p);
-
-
-const ObjectHandler = path => ({
-	get (target, name, receiver) {
-		// debug('get', name, typeof(target[name]));
-		if (typeof(target[name]) === 'object') return new Proxy(target[name], handler((path || []).concat(name)))
-
-		return target[name];
-	},
-	set (target, name, value, receiver) {
-						console.log(path);
-		let property = schema.cache.get(path.join('.'));
-		if (isIgnored(property, name)) return true;
-
-
-
-		if (!target.hasOwnProperty(name))
-			changes.push(['add', path, name, target[name], value]);
-		else
-			changes.push(['set', path, name, target[name], value]);
-		debug(changes[changes.length - 1]);
-		target[name] = value;
-		return true;
-	},
-	deleteProperty (target, name) {
-		changes.push(['del', path, name, target[name]]);
-		debug(changes[changes.length - 1]);
-
-		let property = schema.cache.get(path.join('.'));
-		if (property && property.type === 'array')
-			target.splice(name);
-		else
-			delete target[name];
-
+		if (isNaN(property)) {
+			this.callback({name: property, object: target, type: 'add', oldValue: oldValue});
+		} else if (property < target.length) {
+			let oldValue = target[property];
+			target[property] = value;
+			if (this.isAccept('update'))
+				this.callback({name: property, object: target, type: 'update', oldValue: oldValue});
+		} else {
+			let item = [];
+			item[property - target.length] = value;
+			this.splice(this, target)(target.length, 0, ...item);
+		}
 		return true;
 	}
+}
+
+
+
+function observe(target, callback, acceptlist) {
+
+	if (target instanceof  Array || Array.isArray(target))
+		return new Proxy(target, new ArrayObserver(callback, acceptlist));
+	else
+		return new Proxy(target, new ObjectObserver(callback, acceptlist));
+}
+
+
+function deepObserve(target, callback, acceptlist, ...parts) {
+	Object.keys(target).forEach(e => {
+		if(target[e] instanceof Object) {
+				target[e] = deepObserve(target[e], callback, acceptlist, ...parts.concat(e));
+		}
+	});
+
+	return observe(target, data => {
+		data.parts = parts;
+		callback(data);
+	}, acceptlist, ...parts);
+};
+
+
+
+let proxy = deepObserve(group, data => {
+	console.log(data);
 });
 
-const findProperty = (path, name) => {
-	let result = schema.cache.get(path.join('.'));
-	if (!result) return;
+proxy.members['1000+005056BF4D75-test2'].id = 'fadfasd';
 
-};
-
-const isIgnored = (property, name) => {
-	if (!property) return;
-	return ignoredProperties[property.type] && ignoredProperties[property.type].has(name);
-};
-
-function EpicProxy (data, handler) {
-	let changes = [];
-
-
-
-
-	return new Proxy(data, handler);
-
-}
 
 /*
 object:
@@ -137,4 +221,4 @@ array:
 {name: '', object: {}, type: '', oldValue: '', index: 0, removed: '', addedCount: ''};
 ["add", "update", "delete", "splice"]
 // [{type: 'splice', object: <arr>, index: 1, removed: ['B', 'c', 'd'], addedCount: 3}]
-*/[
+*/
