@@ -7,6 +7,10 @@ class Translator {
 		return parts.join('.');
 	}
 
+	add (change) {
+		let path =  this.join(change.parts.concat(change.name));
+		return {$set: {[path]: change.value }};		
+	}
 
 
 	delete (change) {
@@ -16,7 +20,7 @@ class Translator {
 
 	update (change) {
 		let path =  this.join(change.parts.concat(change.name));
-		return {$set: {[path]: change.newValue}};
+		return {$set: {[path]: change.value}};
 	}
 
 	splice (change) {
@@ -24,10 +28,10 @@ class Translator {
 		
 		if (change.addedCount)
 		{
-			if (change.addedCount === 1)
-				return {$push: {[path]: change.newValue}};
+			if (change.value.length === 1)
+				return {$push: {[path]: change.value}};
 			else
-				return {$push: {[path]: {$each: change.newValue} }};
+				return {$push: {[path]: {$each: change.value} }};
 		}
 		if (change.removed.length)
 		{

@@ -2,6 +2,17 @@ const observe = require('../lib/observe');
 
 let data = require('./data.json');
 
+
+let proxy = observe.deep(data, e => {
+	console.log('case1', e.type, e.name);
+});
+
+
+
+
+
+
+return;
 describe('direct', () => {
 
 
