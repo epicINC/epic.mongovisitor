@@ -36,9 +36,13 @@ let group = {
 
 let map = new Map();
 const symbol = Symbol('changes');
+
 const receiver = function (target, acceptlist) {
 
-    let result = observe.deep(group, change => {
+    if (!target[symbol])
+        target[symbol] = [];
+
+    let result = observe.deep(target, change => {
         if (!result[symbol])
             result[symbol] = [];
         if (change.type === 'splice')
@@ -66,13 +70,13 @@ const trackChanges = function (proxy) {
 }
 
 
-let proxy = receiver(group);
-//delete proxy.members['1000+005056BF4D75-test2'];
 
+let proxy = receiver(group);
+delete proxy.members['1000+005056BF4D75-test2'];
+proxy.id = 1;
 proxy.members["afdfadfaf"] = {test:1};
 
 
-/*
 proxy.managers.push(1);
 proxy.managers.pop();
 proxy.managers.push(4);
@@ -81,5 +85,5 @@ proxy.managers[6] = 'a';
 proxy.managers.length = 0;
 proxy.managers = [1,2,3];
 delete proxy.managers[3];
-*/
+
 trackChanges(proxy);
