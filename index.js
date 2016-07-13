@@ -49,6 +49,9 @@ const receiver = function (target, acceptlist) {
         {
             if (change.addedCount)
                 change.value = change.object.slice(change.index, change.index + change.addedCount);
+
+            if (change.removed.length)
+                change.value = change.object.slice();
         } else if (change.type === 'update') {
             change.value = change.object[change.name];
         } else if (change.type === 'add') {
@@ -72,9 +75,11 @@ const trackChanges = function (proxy) {
 
 
 let proxy = receiver(group);
-delete proxy.members['1000+005056BF4D75-test2'];
-proxy.id = 1;
+
 proxy.members["afdfadfaf"] = {test:1};
+proxy.members['1000+005056BF4D75-test2'].id = 1;
+
+delete proxy.members["afdfadfaf"];
 
 
 proxy.managers.push(1);
@@ -82,8 +87,8 @@ proxy.managers.pop();
 proxy.managers.push(4);
 proxy.managers.splice(2, 3);
 proxy.managers[6] = 'a';
-proxy.managers.length = 0;
-proxy.managers = [1,2,3];
-delete proxy.managers[3];
+delete proxy.managers[1];
+proxy.managers.push(1);
+delete proxy.managers[1];
 
 trackChanges(proxy);
