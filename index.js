@@ -67,6 +67,8 @@ let translator = new Translator();
 const trackChanges = function (proxy) {
     if (!proxy[symbol]) return;
     let result = translator.translate(proxy[symbol]);
+    result.forEach((e, i) => console.log(i, e));
+    console.log();
     console.log(require('util').inspect(result, { showHidden: false, depth: null }));
 
     delete proxy[symbol];
@@ -86,6 +88,7 @@ proxy.managers.push(1);
 proxy.managers.pop();
 proxy.managers.push(4);
 proxy.managers.splice(2, 3);
+//proxy.members['dfa'] = {a:1};
 proxy.managers[6] = 'a';
 delete proxy.managers[1];
 proxy.managers.push(1);
